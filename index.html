@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Community Calendar — Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; width: 100%; min-height: 100%; background: #fff; }
+    .calendar-container { width: 100%; height: 650px; min-height: 450px; }
+    iframe { display: block; width: 100%; height: 100%; border: 0; }
+    @media (max-width: 600px) { .calendar-container { height: 620px; } }
+  </style>
+</head>
+<body>
+  <main class="calendar-container">
+    <!-- This static src is deliberately present as a no-JavaScript UTC fallback. -->
+    <iframe id="community-calendar" title="Community Sessions test calendar"
+      src="https://calendar.google.com/calendar/embed?src=362ee36c65781b95a1bdf0c8708324fff0b86ba601f8e6052a3e5d727bfc3852%40group.calendar.google.com&amp;ctz=UTC&amp;mode=AGENDA&amp;showTitle=0&amp;showPrint=0&amp;showCalendars=0"
+      referrerpolicy="strict-origin-when-cross-origin"
+      loading="eager">
+    </iframe>
+  </main>
+  <script>
+    (() => {
+      const calendarId = '362ee36c65781b95a1bdf0c8708324fff0b86ba601f8e6052a3e5d727bfc3852@group.calendar.google.com';
+      let timeZone = 'UTC';
+      try {
+        const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (detected) timeZone = detected;
+      } catch (error) {
+        console.warn('Time zone detection unavailable; using UTC.', error);
+      }
+      const params = new URLSearchParams({
+        src: calendarId,
+        ctz: timeZone,
+        hl: (navigator.language || 'en').split('-')[0],
+        mode: 'AGENDA',
+        showTitle: '0',
+        showNav: '1',
+        showDate: '1',
+        showPrint: '0',
+        showTabs: '1',
+        showCalendars: '0'
+      });
+      document.getElementById('community-calendar').src =
+        `https://calendar.google.com/calendar/embed?${params.toString()}`;
+    })();
+  </script>
+</body>
+</html>
