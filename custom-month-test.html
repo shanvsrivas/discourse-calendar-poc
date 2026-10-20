@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Community Sessions — Custom Month POC</title>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.20/index.global.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font: 14px/1.45 Arial, sans-serif; color: #202124; margin: 0; padding: 16px; background: white; }
+  header { margin-bottom: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 20px; }
+  #status { color: #5f6368; font-size: 13px; }
+  #calendar { max-width: 100%; }
+  .fc .fc-toolbar { flex-wrap: wrap; gap: 8px; }
+  .fc .fc-toolbar-title { font-size: 1.3rem; }
+  .fc .fc-daygrid-day-frame { min-height: 95px; }
+  /* Our markup is inside this page, so we can guarantee wrapping. */
+  .wrapped-event { display: block; width: 100%; white-space: normal; overflow-wrap: anywhere; word-break: normal; padding: 3px 4px; font-size: 12px; line-height: 1.3; }
+  .wrapped-event .event-time { display: block; font-weight: 600; }
+  .wrapped-event .event-title { display: block; white-space: normal; overflow-wrap: anywhere; }
+  .fc .fc-daygrid-event { white-space: normal; align-items: start; }
+  .fc .fc-daygrid-event-harness { overflow: visible; }
+  .fc .fc-daygrid-event .fc-event-main { white-space: normal; }
+  .fc .fc-daygrid-day-events { margin-bottom: 3px; }
+  .fc .fc-event { cursor: pointer; }
+  .fc .fc-daygrid-more-link { white-space: normal; }
+  dialog { border: 1px solid #dadce0; border-radius: 14px; padding: 20px; width: min(95vw, 480px); box-shadow: 0 14px 40px #0003; }
+  dialog::backdrop { background: #0007; }
+  dialog h2 { font-size: 20px; overflow-wrap: anywhere; margin-top: 0; }
+  dialog p { white-space: pre-wrap; overflow-wrap: anywhere; }
+  dialog a { overflow-wrap: anywhere; }
+  button { cursor: pointer; }
+  #close { float: right; border: 0; background: #eee; padding: 7px 11px; border-radius: 8px; }
+  @media (max-width: 600px) { body { padding: 8px; } .fc .fc-toolbar-title { font-size: 1.05rem; } .fc .fc-daygrid-day-frame { min-height: 70px; } .wrapped-event { font-size: 10px; padding: 2px; } .fc .fc-daygrid-day-number { font-size: 11px; } }
+</style>
+</head>
+<body>
+<header><h1>TEST — Community Sessions Calendar</h1><span id="status" role="status"></span></header>
+<div id="calendar"></div>
+<dialog id="details" aria-label="Event details"><button id="close" type="button">Close</button><h2 id="event-name"></h2><div id="event-time"></div><p id="event-description"></p><a id="event-link" target="_blank" rel="noopener noreferrer">Open in Google Calendar</a></dialog>
+<script>
+  // STEP 1: Replace ONLY this placeholder with your RESTRICTED browser API key.
+  // Note: Browser API keys are visible in the site's source. Never paste a service account key here.
+  const GOOGLE_API_KEY = 'PASTE_YOUR_RESTRICTED_API_KEY_HERE';
+  const GOOGLE_CALENDAR_ID = '362ee36c65781b95a1bdf0c8708324fff0b86ba601f8e6052a3e5d727bfc3852@group.calendar.google.com';
+  const zone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { return 'UTC'; } })();
+  document.getElementById('status').textContent = 'Browser timezone: ' + zone;
+  if (GOOGLE_API_KEY.includes('PASTE_YOUR')) document.getElementById('status').textContent += ' — API key not added yet';
+  const dialog = document.getElementById('details');
+  document.getElementById('close').addEventListener('click', () => dialog.close());
+  const escapeText = text => document.createTextNode(text || '');
+  document.addEventListener('DOMContentLoaded', () => {
+    const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+      initialView: 'dayGridMonth',
+      initialDate: '2026-10-21',
+      timeZone: zone,
+      height: 'auto',
+      fixedWeekCount: false,
+      dayMaxEvents: false,
+      eventDisplay: 'block',
+      headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
+      googleCalendarApiKey: GOOGLE_API_KEY,
+      events: { googleCalendarId: GOOGLE_CALENDAR_ID },
+      eventSourceFailure(error) {
+        console.error('Google Calendar events could not be loaded:', error);
+        document.getElementById('status').textContent = 'Cannot load events. Check API key, calendar sharing, and browser console.';
+      },
+      eventContent(arg) {
+        const wrap = document.createElement('div'); wrap.className = 'wrapped-event';
+        if (arg.timeText) { const time = document.createElement('span'); time.className = 'event-time'; time.append(escapeText(arg.timeText)); wrap.append(time); }
+        const title = document.createElement('span'); title.className = 'event-title'; title.append(escapeText(arg.event.title)); wrap.append(title);
+        return { domNodes: [wrap] };
+      },
+      eventClick(info) {
+        info.jsEvent.preventDefault();
+        const event = info.event;
+        document.getElementById('event-name').textContent = event.title;
+        const format = date => date ? new Intl.DateTimeFormat(navigator.language, {dateStyle:'full',timeStyle:'short', timeZone:zone}).format(date) : '';
+        document.getElementById('event-time').textContent = event.allDay ? 'All-day event' : format(event.start) + (event.end ? ' – ' + format(event.end) : '');
+        document.getElementById('event-description').textContent = event.extendedProps.description || 'No description provided.';
+        const a = document.getElementById('event-link'); a.href = /^https:\/\//.test(event.url || '') ? event.url : 'https://calendar.google.com/';
+        dialog.showModal();
+      }
+    });
+    calendar.render();
+  });
+</script>
+</body>
+</html>
