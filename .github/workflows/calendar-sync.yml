@@ -32,10 +32,13 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add events.json
+          
           if ! git diff --cached --quiet; then
             git commit -m 'Sync public test calendar events'
-            git push
+            git pull --rebase origin main
+            git push origin main
           fi
+
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload site files
