@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TEST — Community Sessions Calendar (No calendar library)</title>
+<style>
+:root { font-family: Arial, Helvetica, sans-serif; color: #202124; background: #fff; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px; }
+header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+h1 { font-size: 20px; margin: 0; }
+#status { color: #5f6368; font-size: 13px; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.controls h2 { font-size: 22px; margin: 0 12px 0 0; min-width: 185px; }
+button { font: inherit; cursor: pointer; }
+.controls button, .close { background: #fff; border: 1px solid #dadce0; border-radius: 6px; padding: 7px 12px; }
+.controls button:hover, .close:hover { background: #f1f3f4; }
+#month-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); border-left: 1px solid #dadce0; border-top: 1px solid #dadce0; }
+.weekday { text-align: center; padding: 10px 2px; font-size: 12px; font-weight: bold; color: #5f6368; background: #f8f9fa; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; }
+.day { min-width: 0; min-height: 118px; padding: 6px; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; }
+.day.outside { background: #fafafa; }
+.day.today .day-number { background: #1967d2; color: #fff; border-radius: 50%; padding: 4px 7px; }
+.day-number { display: inline-block; font-size: 13px; margin-bottom: 5px; }
+.event { background: #e8f0fe; color: #174ea6; border: 0; border-left: 3px solid #4276d2; display: block; text-align: left; width: 100%; margin: 3px 0; padding: 4px 5px; border-radius: 3px; font-size: 12px; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+.event:hover, .event:focus-visible { background: #d2e3fc; outline: 2px solid #174ea6; }
+.event .event-title { display: block; white-space: normal; }
+.event .event-time { display: block; font-weight: bold; margin-bottom: 2px; }
+#mobile-list { display: none; }
+.mobile-day { border-bottom: 1px solid #dadce0; padding: 12px 2px; }
+.mobile-day h3 { margin: 0 0 6px; font-size: 14px; }
+.mobile-day .event { padding: 10px; font-size: 14px; }
+.notice { padding: 12px; color: #5f6368; }
+dialog { width: min(95vw, 520px); border: 1px solid #dadce0; border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px #0003; }
+dialog::backdrop { background: #0006; }
+dialog h2 { margin: 6px 0 10px; font-size: 19px; overflow-wrap: anywhere; }
+dialog p { white-space: pre-wrap; overflow-wrap: anywhere; }
+dialog a { overflow-wrap: anywhere; }
+.close { float: right; }
+@media(max-width: 680px) { body { padding: 10px; } h1 { font-size: 18px; } #month-grid { display: none; } #mobile-list { display: block; } .controls h2 { font-size: 18px; min-width: 0; } }
+</style>
+</head>
+<body>
+<header><h1>TEST — Community Sessions Calendar</h1><span id="status" role="status"></span></header>
+<nav class="controls" aria-label="Calendar navigation">
+ <button id="prev" type="button" aria-label="Previous month">◀</button>
+ <button id="today" type="button">Today</button>
+ <button id="next" type="button" aria-label="Next month">▶</button>
+ <h2 id="month-label"></h2>
+</nav>
+<div id="month-grid" aria-label="Month calendar"></div>
+<div id="mobile-list" aria-label="Meetings this month"></div>
+<dialog id="details" aria-label="Event details">
+ <button class="close" id="close" type="button">Close</button>
+ <h2 id="event-name"></h2><div id="event-time"></div>
+ <p id="event-description"></p>
+ <a id="event-link" target="_blank" rel="noopener noreferrer">Open in Google Calendar</a>
+</dialog>
+<script>
+(() => {
+  'use strict';
+  // Public TEST calendar only. Restricted browser API keys remain visible in source code.
+  // Confirm company policy before publishing a key in a public repository.
+  const GOOGLE_API_KEY = 'PASTE_YOUR_RESTRICTED_API_KEY_HERE';
+  const CALENDAR_ID = '362ee36c65781b95a1bdf0c8708324fff0b86ba601f8e6052a3e5d727bfc3852@group.calendar.google.com';
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { return 'UTC'; } })();
+  const locale = navigator.language || 'en';
+  const zoneParts = new Intl.DateTimeFormat('en-US', {timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit'});
+  const pad = n => String(n).padStart(2, '0');
+  function localParts(date) {
+    const o = Object.fromEntries(zoneParts.formatToParts(date).filter(x => ['year','month','day'].includes(x.type)).map(x => [x.type, Number(x.value)]));
+    return o;
+  }
+  const localKey = date => {const p=localParts(date); return `${p.year}-${pad(p.month)}-${pad(p.day)}`;};
+  const plainKey = (y,m,d) => `${y}-${pad(m)}-${pad(d)}`;
+  const addUTC = (y,m,d,offset=0) => new Date(Date.UTC(y,m-1,d+offset));
+  const monthDate = new Date();
+  const now = localParts(new Date());
+  let year = now.year, month = now.month;
+  let loadNumber = 0;
+  const status = document.getElementById('status');
+  const label = document.getElementById('month-label');
+  const grid = document.getElementById('month-grid');
+  const mobile = document.getElementById('mobile-list');
+  const modal = document.getElementById('details');
+  document.getElementById('close').onclick = () => modal.close();
+  status.textContent = `Browser timezone: ${tz}`;
+  function text(tag, value, klass) { const node = document.createElement(tag); node.textContent = value || ''; if (klass) node.className = klass; return node; }
+  function eventStart(e) { return e.start?.dateTime ? new Date(e.start.dateTime) : null; }
+  function eventEnd(e) { return e.end?.dateTime ? new Date(e.end.dateTime) : null; }
+  const prettyTime = date => new Intl.DateTimeFormat(locale,{ timeZone:tz, hour:'numeric', minute:'2-digit' }).format(date);
+  const prettyDate = date => new Intl.DateTimeFormat(locale,{ timeZone:tz, dateStyle:'full', timeStyle:'short' }).format(date);
+  function showEvent(e) {
+    document.getElementById('event-name').textContent = e.summary || '(Untitled event)';
+    const s=eventStart(e), end=eventEnd(e);
+    document.getElementById('event-time').textContent = s ? `${prettyDate(s)}${end ? ' – '+prettyDate(end) : ''}` : `All-day: ${e.start?.date || ''}`;
+    document.getElementById('event-description').textContent = e.description || 'No description provided.';
+    const link = document.getElementById('event-link');
+    if (/^https:\/\//i.test(e.htmlLink || '')) { link.href=e.htmlLink; link.hidden=false; } else { link.hidden=true; link.removeAttribute('href'); }
+    modal.showModal();
+  }
+  function eventButton(e, dayKey) {
+    const b = document.createElement('button'); b.className='event'; b.type='button';
+    const s=eventStart(e);
+    if (s && localKey(s)===dayKey) b.append(text('span',prettyTime(s),'event-time'));
+    b.append(text('span',e.summary || '(Untitled event)','event-title'));
+    b.onclick=() => showEvent(e);
+    return b;
+  }
+  function dateKeys(e) {
+    // Google Calendar end dates/times are exclusive. Handle all-day and multi-day events.
+    const startAll = e.start?.date, endAll = e.end?.date;
+    if (startAll) {
+      let d = new Date(startAll+'T00:00:00Z'); const end = new Date((endAll || startAll)+'T00:00:00Z');
+      if (!endAll) end.setUTCDate(end.getUTCDate()+1);
+      const keys=[]; for(let i=0;d<end && i<370;i++,d.setUTCDate(d.getUTCDate()+1)) keys.push(plainKey(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate()));
+      return keys;
+    }
+    const s=eventStart(e), end=eventEnd(e); if(!s) return [];
+    let final = end && end>s ? new Date(end.getTime()-1) : s;
+    // Use noon UTC across expanded range to avoid DST ambiguities in iterating calendar dates.
+    const a=localParts(s), z=localParts(final);
+    let d=addUTC(a.year,a.month,a.day), last=addUTC(z.year,z.month,z.day);
+    const keys=[]; for(let i=0;d<=last && i<370;i++,d.setUTCDate(d.getUTCDate()+1)) keys.push(plainKey(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate()));
+    return keys;
+  }
+  function render(events) {
+    grid.replaceChildren(); mobile.replaceChildren();
+    label.textContent = new Intl.DateTimeFormat(locale,{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(year,month-1,1)));
+    const map=new Map();
+    for(const e of events) for(const k of dateKeys(e)) { if(!map.has(k)) map.set(k,[]); map.get(k).push(e); }
+    const first=new Date(Date.UTC(year,month-1,1));
+    const startOffset=first.getUTCDay();
+    const lastDay=new Date(Date.UTC(year,month,0)).getUTCDate();
+    const rows=Math.ceil((startOffset+lastDay)/7);
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(day=>grid.append(text('div',day,'weekday')));
+    for(let i=0;i<rows*7;i++) {
+      const day=addUTC(year,month,1,i-startOffset); const dayYear=day.getUTCFullYear(), dayMonth=day.getUTCMonth()+1, num=day.getUTCDate();
+      const k=plainKey(dayYear,dayMonth,num); const box=text('div','','day'+(dayMonth!==month?' outside':'')+(k===plainKey(now.year,now.month,now.day)?' today':''));
+      box.append(text('span',String(num),'day-number'));
+      for(const e of map.get(k)||[]) box.append(eventButton(e,k));
+      grid.append(box);
+    }
+    let count=0;
+    for(let d=1;d<=lastDay;d++) {
+      const k=plainKey(year,month,d), ev=map.get(k)||[]; if(!ev.length) continue; count+=ev.length;
+      const section=text('section','','mobile-day');
+      const date=new Date(Date.UTC(year,month-1,d));
+      section.append(text('h3',new Intl.DateTimeFormat(locale,{weekday:'long',month:'short',day:'numeric',timeZone:'UTC'}).format(date)));
+      for(const e of ev) section.append(eventButton(e,k)); mobile.append(section);
+    }
+    if(!count) mobile.append(text('p','No events scheduled in this month.','notice'));
+  }
+  async function getEvents() {
+    const current=++loadNumber;
+    status.textContent=`Browser timezone: ${tz} · Loading events…`;
+    render([]);
+    if (GOOGLE_API_KEY.includes('PASTE_YOUR')) {status.textContent=`Browser timezone: ${tz} · Add restricted API key to this test file`; return;}
+    // Expanded UTC bounds cover neighboring month cells and time-zone date changes.
+    const min=new Date(Date.UTC(year,month-2,1)-3*86400000).toISOString();
+    const max=new Date(Date.UTC(year,month+1,1)+3*86400000).toISOString();
+    let pageToken='', all=[];
+    try {
+      do {
+        const u=new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events`);
+        u.searchParams.set('key',GOOGLE_API_KEY);
+        u.searchParams.set('timeMin',min); u.searchParams.set('timeMax',max);
+        u.searchParams.set('singleEvents','true'); u.searchParams.set('orderBy','startTime'); u.searchParams.set('maxResults','2500');
+        if(pageToken) u.searchParams.set('pageToken',pageToken);
+        const res=await fetch(u.toString(),{referrerPolicy:'strict-origin-when-cross-origin'});
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error?.message||`Google API HTTP ${res.status}`);
+        all=all.concat(data.items||[]); pageToken=data.nextPageToken||'';
+      } while(pageToken && all.length<10000 && current===loadNumber);
+      if(current!==loadNumber) return;
+      render(all);
+      status.textContent=`Browser timezone: ${tz} · ${all.length} events fetched · Updated ${new Date().toLocaleTimeString(locale)}`;
+    } catch (err) {
+      if(current!==loadNumber) return;
+      console.error('Google Calendar API error:',err);
+      status.textContent=`Cannot load events. Check Google API key restrictions and public calendar access. (${err.message})`;
+    }
+  }
+  function changeMonth(delta) { const d=new Date(Date.UTC(year,month-1+delta,1)); year=d.getUTCFullYear(); month=d.getUTCMonth()+1; getEvents(); }
+  document.getElementById('prev').onclick=()=>changeMonth(-1);
+  document.getElementById('next').onclick=()=>changeMonth(1);
+  document.getElementById('today').onclick=()=>{const d=localParts(new Date());year=d.year;month=d.month;getEvents();};
+  getEvents();
+})();
+</script>
+</body>
+</html>
