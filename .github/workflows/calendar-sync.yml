@@ -1,0 +1,47 @@
+name: Sync and publish test community calendar
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'   # Every 6 hours (UTC), schedules may be delayed
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: community-calendar-pages
+  cancel-in-progress: false
+
+jobs:
+  sync-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Refresh public test event data
+        env:
+          GOOGLE_CALENDAR_API_KEY: ${{ secrets.GOOGLE_CALENDAR_API_KEY }}
+        run: python3 scripts/sync_calendar.py
+      - name: Save updated cache to repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add events.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync public test calendar events'
+            git push
+          fi
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site files
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Deploy site
+        id: deployment
+        uses: actions/deploy-pages@v4
