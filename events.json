@@ -1,6 +1,6 @@
 {
   "description": "PUBLIC TEST CALENDAR - automatically synced by GitHub Actions",
-  "lastSyncedAt": "2026-10-21T18:56:54.886252Z",
+  "lastSyncedAt": "2026-10-21T18:59:57.528021Z",
   "events": [
     {
       "id": "29ll8g906go1o74ufhdammvoai",
@@ -131,6 +131,19 @@
         "timeZone": "Europe/Amsterdam"
       },
       "htmlLink": "https://www.google.com/calendar/event?eid=NTdzcjN1bTVudGRrb25nOXFucXM3aHVxam4gMzYyZWUzNmM2NTc4MWI5NWExYmRmMGM4NzA4MzI0ZmZmMGI4NmJhNjAxZjhlNjA1MmEzZTVkNzI3YmZjMzg1MkBn"
+    },
+    {
+      "id": "2eaif8474mv6vushiprc54bt2b",
+      "summary": "Community Calendar Auto Sync Test",
+      "start": {
+        "dateTime": "2026-11-11T22:30:00Z",
+        "timeZone": "Asia/Kolkata"
+      },
+      "end": {
+        "dateTime": "2026-11-11T23:30:00Z",
+        "timeZone": "Asia/Kolkata"
+      },
+      "htmlLink": "https://www.google.com/calendar/event?eid=MmVhaWY4NDc0bXY2dnVzaGlwcmM1NGJ0MmIgMzYyZWUzNmM2NTc4MWI5NWExYmRmMGM4NzA4MzI0ZmZmMGI4NmJhNjAxZjhlNjA1MmEzZTVkNzI3YmZjMzg1MkBn"
     }
   ]
 }
