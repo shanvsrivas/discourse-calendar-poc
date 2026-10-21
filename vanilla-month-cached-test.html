@@ -149,25 +149,66 @@ dialog a { overflow-wrap: anywhere; }
     }
     if(!count) mobile.append(text('p','No events scheduled in this month.','notice'));
   }
-  async function getEvents() {
-    const current=++loadNumber;
-    status.textContent=`Browser timezone: ${tz} · Loading events…`;
-    render([]);
-    try {
-      // Static demo data only. An approved server-side sync will update events.json later.
-      const res = await fetch('./events.json', {cache:'no-cache'});
-      if (!res.ok) throw new Error(`events.json HTTP ${res.status}`);
-      const data = await res.json();
-      if (!Array.isArray(data.events)) throw new Error('Invalid events.json format');
-      if (current !== loadNumber) return;
-      render(data.events);
-      status.textContent = `Browser timezone: ${tz} · ${data.events.length} demo events · Static test data (not live Google sync)`;
-    } catch (err) {
-      if (current !== loadNumber) return;
-      console.error('Cached calendar data error:',err);
-      status.textContent = `Could not load demo events (${err.message})`;
+  
+async function getEvents() {
+  const current = ++loadNumber;
+
+  status.textContent =
+    `Browser timezone: ${tz} · Loading events…`;
+
+  render([]);
+
+  try {
+    // Fetch the latest published calendar events
+    const res = await fetch('./events.json', {
+      cache: 'no-cache'
+    });
+
+    if (!res.ok) {
+      throw new Error(`events.json HTTP ${res.status}`);
     }
+
+    const data = await res.json();
+
+    if (!Array.isArray(data.events)) {
+      throw new Error('Invalid events.json format');
+    }
+
+    if (current !== loadNumber) return;
+
+    // Display calendar events
+    render(data.events);
+
+    // Get the last successful synchronization time
+    const lastSyncedDate = data.lastSyncedAt
+      ? new Date(data.lastSyncedAt)
+      : null;
+
+    // Convert sync timestamp to visitor's timezone
+    const lastSynced =
+      lastSyncedDate &&
+      !Number.isNaN(lastSyncedDate.getTime())
+        ? new Intl.DateTimeFormat(locale, {
+            timeZone: tz,
+            dateStyle: 'medium',
+            timeStyle: 'short'
+          }).format(lastSyncedDate)
+        : 'unavailable';
+
+    // Display the updated calendar status
+    status.textContent =
+      `Browser timezone: ${tz} · ${data.events.length} events · Last synced: ${lastSynced}`;
+
+  } catch (err) {
+    if (current !== loadNumber) return;
+
+    console.error('Cached calendar data error:', err);
+
+    status.textContent =
+      `Could not load calendar events (${err.message})`;
   }
+}
+
   function changeMonth(delta) { const d=new Date(Date.UTC(year,month-1+delta,1)); year=d.getUTCFullYear(); month=d.getUTCMonth()+1; getEvents(); }
   document.getElementById('prev').onclick=()=>changeMonth(-1);
   document.getElementById('next').onclick=()=>changeMonth(1);
