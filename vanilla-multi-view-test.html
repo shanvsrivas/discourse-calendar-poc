@@ -23,6 +23,29 @@ button { font: inherit; cursor: pointer; }
 .view-switch button:last-child { border-radius: 0 6px 6px 0; }
 .view-switch button[aria-pressed="true"] { background: #e8f0fe; color: #174ea6; border-color: #789fea; font-weight: bold; position: relative; }
 button:focus-visible { outline: 2px solid #174ea6; outline-offset: 2px; }
+/* Google Calendar-style Today hint: visible on mouse hover and on keyboard/click focus. */
+.controls #today { position: relative; }
+.controls #today::after {
+  content: attr(data-today);
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  z-index: 30;
+  padding: 6px 9px;
+  border-radius: 4px;
+  background: #303134;
+  color: #fff;
+  font-size: 12px;
+  font-weight: normal;
+  white-space: nowrap;
+  box-shadow: 0 2px 7px #0003;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+.controls #today:hover::after,
+.controls #today:focus::after { opacity: 1; visibility: visible; }
+
 /* Month: Always display all seven dates, including empty days, at every screen size. */
 #month-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); border-left: 1px solid #dadce0; border-top: 1px solid #dadce0; max-height: 625px; overflow-y: auto; }
 .weekday { position: sticky; top: 0; z-index: 2; text-align: center; padding: 7px 2px; font-size: 11px; font-weight: bold; color: #5f6368; background: #f8f9fa; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; }
@@ -39,7 +62,7 @@ button:focus-visible { outline: 2px solid #174ea6; outline-offset: 2px; }
 /* Week: Google Calendar-style hour-by-hour scrollable grid. */
 #week-view { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; }
 .week-scroll { max-height: 610px; overflow: auto; }
-.week-board { min-width: 740px; display: grid; grid-template-columns: 52px repeat(7, minmax(98px,1fr)); }
+.week-board { width: 100%; min-width: 0; display: grid; grid-template-columns: 48px repeat(7, minmax(0,1fr)); }
 .week-corner, .week-header { position: sticky; top: 0; z-index: 5; height: 57px; background: #fff; border-bottom: 1px solid #dadce0; border-right: 1px solid #e1e4e8; }
 .week-corner { grid-column: 1; }
 .week-header { text-align: center; padding: 5px 1px; font-size: 12px; color: #5f6368; }
@@ -84,6 +107,8 @@ dialog a { overflow-wrap: anywhere; }
   .schedule-number { font-size: 20px; }
   .schedule-event { grid-template-columns: 10px 60px minmax(0,1fr); gap: 5px; }
   .schedule-title { font-size: 12px; }
+  /* Very narrow screens scroll horizontally rather than squeezing the seven days. */
+  .week-board { min-width: 680px; }
 }
 </style>
 </head>
@@ -156,6 +181,17 @@ dialog a { overflow-wrap: anywhere; }
   }
   const prettyTime = date => new Intl.DateTimeFormat(locale,{timeZone:tz,hour:'numeric',minute:'2-digit'}).format(date);
   const prettyDate = date => new Intl.DateTimeFormat(locale,{timeZone:tz,dateStyle:'full',timeStyle:'short'}).format(date);
+  const todayButton = document.getElementById('today');
+  const todayText = date => new Intl.DateTimeFormat(locale, {
+    timeZone: tz, weekday:'long', month:'long', day:'numeric', year:'numeric'
+  }).format(date);
+  function updateTodayHint() {
+    const hint = todayText(new Date());
+    todayButton.dataset.today = hint;
+    todayButton.setAttribute('aria-label', 'Today — ' + hint);
+  }
+  updateTodayHint();
+
   function text(tag,value,klass) { const node=document.createElement(tag); node.textContent=value||''; if(klass) node.className=klass; return node; }
   function eventStart(e) { return e.start?.dateTime ? new Date(e.start.dateTime) : null; }
   function eventEnd(e) { return e.end?.dateTime ? new Date(e.end.dateTime) : null; }
@@ -200,6 +236,10 @@ dialog a { overflow-wrap: anywhere; }
     const day=utcDay(a.year,a.month,a.day),last=utcDay(z.year,z.month,z.day),keys=[];
     for(let i=0;day<=last && i<370;i++,day.setUTCDate(day.getUTCDate()+1)) keys.push(dateUTC(day));
     return keys;
+  }
+  function isVeryLongEvent(e) {
+    const start=eventStart(e),end=eventEnd(e);
+    return Boolean(start && end && end-start>=24*60*60*1000 && localKey(start)!==localKey(end));
   }
   function groupedEvents() {
     const map=new Map();
@@ -255,15 +295,21 @@ dialog a { overflow-wrap: anywhere; }
     weekView.replaceChildren();
     const first=startOfWeek(cursor);
     const dates=Array.from({length:7},(_,i)=>utcDay(first.getUTCFullYear(),first.getUTCMonth()+1,first.getUTCDate(),i));
-    // All-day events can span multiple days; display them above the hourly timetable.
-    const allDayEntries=[];
-    for(const date of dates) for(const e of map.get(dateUTC(date))||[]) if(e.start?.date) allDayEntries.push({date,e});
-    if(allDayEntries.length) {
+    // Show all-day and very long multi-day events above the hourly grid.
+    // Keep each event once even when it spans several dates.
+    const extended=[];
+    const seen=new Set();
+    for(const date of dates) for(const e of map.get(dateUTC(date))||[]) {
+      if(!(e.start?.date || isVeryLongEvent(e)) || seen.has(e)) continue;
+      seen.add(e);
+      extended.push(e);
+    }
+    if(extended.length) {
       const allDay=text('div','','week-allday');
-      allDay.append(text('strong','All day:'));
-      for(const item of allDayEntries) {
-        const b=eventButton(item.e,dateUTC(item.date));
-        b.title=shortDayFormat.format(item.date)+' — '+(item.e.summary||'Untitled');
+      allDay.append(text('strong','All-day / multi-day:'));
+      for(const e of extended) {
+        const b=eventButton(e,localKey(eventStart(e)||new Date()),true);
+        b.title=(e.summary||'Untitled')+(eventStart(e)?' — '+prettyDate(eventStart(e)):'');
         allDay.append(b);
       }
       weekView.append(allDay);
@@ -289,7 +335,7 @@ dialog a { overflow-wrap: anywhere; }
       const dayKey=dateUTC(date);
       const track=text('div','','week-track'+(dayKey===todayKey?' is-today':''));
       for(const e of map.get(dayKey)||[]) {
-        if(e.start?.date) continue;
+        if(e.start?.date || isVeryLongEvent(e)) continue;
         const start=eventStart(e),end=eventEnd(e);
         if(!start || Number.isNaN(start.getTime())) continue;
         const a=localKey(start)===dayKey?minuteInViewerZone(start):0;
@@ -376,8 +422,10 @@ dialog a { overflow-wrap: anywhere; }
   }
   document.getElementById('prev').onclick=()=>move(-1);
   document.getElementById('next').onclick=()=>move(1);
-  document.getElementById('today').onclick=()=>{
+  todayButton.onclick=()=>{
+    updateTodayHint();
     const p=localParts(new Date()); cursor=utcDay(p.year,p.month,p.day); render();
+    todayButton.focus({preventScroll:true});
   };
   async function loadEvents() {
     status.textContent=`Browser timezone: ${tz} · Loading events…`;
