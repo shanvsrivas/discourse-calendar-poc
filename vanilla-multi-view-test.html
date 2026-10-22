@@ -3,44 +3,70 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TEST — Community Sessions Calendar (Month, Day & Schedule)</title>
+<title>TEST — Community Sessions Calendar (Month, Week & Schedule)</title>
 <style>
+
 :root { font-family: Arial, Helvetica, sans-serif; color: #202124; background: #fff; }
 * { box-sizing: border-box; }
-body { margin: 0; padding: 16px; }
-header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-h1 { font-size: 20px; margin: 0; }
-#status { color: #5f6368; font-size: 13px; }
-.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-.controls h2 { font-size: 22px; margin: 0 12px 0 0; min-width: 185px; flex: 1 1 auto; }
+body { margin: 0; padding: 12px; }
+header { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+h1 { font-size: 19px; margin: 0; }
+#status { color: #5f6368; font-size: 12px; }
+.controls { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.controls h2 { font-size: 20px; margin: 0 10px 0 0; min-width: 160px; flex: 1 1 auto; }
 button { font: inherit; cursor: pointer; }
-.controls > button, .view-switch button, .close { background: #fff; border: 1px solid #dadce0; border-radius: 6px; padding: 7px 12px; }
+.controls > button, .view-switch button, .close { background: #fff; border: 1px solid #dadce0; border-radius: 6px; padding: 6px 10px; }
 .controls button:hover, .view-switch button:hover, .close:hover { background: #f1f3f4; }
-.view-switch { display: flex; gap: 0; align-items: center; }
+.view-switch { display: flex; align-items: center; }
 .view-switch button { border-radius: 0; margin-left: -1px; }
 .view-switch button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
 .view-switch button:last-child { border-radius: 0 6px 6px 0; }
 .view-switch button[aria-pressed="true"] { background: #e8f0fe; color: #174ea6; border-color: #789fea; font-weight: bold; position: relative; }
 button:focus-visible { outline: 2px solid #174ea6; outline-offset: 2px; }
-#month-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); border-left: 1px solid #dadce0; border-top: 1px solid #dadce0; }
-.weekday { text-align: center; padding: 10px 2px; font-size: 12px; font-weight: bold; color: #5f6368; background: #f8f9fa; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; }
-.day { min-width: 0; min-height: 118px; padding: 6px; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; }
+/* Month: Always display all seven dates, including empty days, at every screen size. */
+#month-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); border-left: 1px solid #dadce0; border-top: 1px solid #dadce0; max-height: 625px; overflow-y: auto; }
+.weekday { position: sticky; top: 0; z-index: 2; text-align: center; padding: 7px 2px; font-size: 11px; font-weight: bold; color: #5f6368; background: #f8f9fa; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; }
+.day { min-width: 0; min-height: 93px; padding: 4px; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; }
 .day.outside { background: #fafafa; }
-.day-number { border: 0; background: transparent; font-size: 13px; border-radius: 50%; padding: 4px 7px; margin-bottom: 5px; }
+.day-number { border: 0; background: transparent; font-size: 12px; border-radius: 50%; padding: 3px 5px; margin-bottom: 3px; }
 .day-number:hover { background: #edf2fa; }
 .day.today .day-number { background: #1967d2; color: #fff; }
-.event { background: #e8f0fe; color: #174ea6; border: 0; border-left: 3px solid #4276d2; display: block; text-align: left; width: 100%; margin: 3px 0; padding: 5px 6px; border-radius: 3px; font-size: 12px; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+.event { background: #e8f0fe; color: #174ea6; border: 0; border-left: 3px solid #4276d2; display: block; text-align: left; width: 100%; margin: 2px 0; padding: 3px 4px; border-radius: 3px; font-size: 11.5px; line-height: 1.23; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
 .event:hover, .event:focus-visible { background: #d2e3fc; outline: 2px solid #174ea6; }
 .event .event-title, .event .event-time { display: block; white-space: normal; }
-.event .event-time { font-weight: bold; margin-bottom: 2px; }
-#mobile-list { display: none; }
-.mobile-day, .agenda-day { border-bottom: 1px solid #dadce0; padding: 12px 2px; }
-.mobile-day h3, .agenda-day h3 { margin: 0 0 8px; font-size: 15px; }
-.mobile-day .event, .agenda-day .event { padding: 11px 12px; font-size: 14px; }
-.agenda-day { max-width: 860px; }
-#day-view .agenda-day { max-width: none; border: 1px solid #dadce0; border-radius: 8px; padding: 18px; }
-#day-view .agenda-day h3 { font-size: 18px; }
-#day-view .event { max-width: 860px; }
+.event .event-time { font-weight: bold; margin-bottom: 1px; }
+#mobile-list { display: none !important; }
+/* Week: Google Calendar-style hour-by-hour scrollable grid. */
+#week-view { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; }
+.week-scroll { max-height: 610px; overflow: auto; }
+.week-board { min-width: 740px; display: grid; grid-template-columns: 52px repeat(7, minmax(98px,1fr)); }
+.week-corner, .week-header { position: sticky; top: 0; z-index: 5; height: 57px; background: #fff; border-bottom: 1px solid #dadce0; border-right: 1px solid #e1e4e8; }
+.week-corner { grid-column: 1; }
+.week-header { text-align: center; padding: 5px 1px; font-size: 12px; color: #5f6368; }
+.week-header .week-date { display: block; font-weight: 600; font-size: 19px; color: #202124; }
+.week-header.is-today .week-date { display: block; margin: 0 auto; background: #1967d2; color: white; border-radius: 50%; width: 30px; padding: 3px; }
+.week-clock { position: relative; height: 1440px; border-right: 1px solid #dadce0; background: #fff; }
+.hour-label { position: absolute; right: 5px; transform: translateY(-50%); color: #68727b; font-size: 10px; white-space: nowrap; }
+.week-track { position: relative; height: 1440px; min-width: 0; border-right: 1px solid #e1e4e8; background: repeating-linear-gradient(to bottom, #fff 0, #fff 59px, #e0e4ea 59px, #e0e4ea 60px); }
+.week-track.is-today { background-color: #f9fbff; }
+.week-event { position: absolute; left: 3px; right: 3px; width: calc(100% - 6px); margin: 0; padding: 4px; font-size: 11px; line-height: 1.2; overflow: auto; z-index: 1; }
+.week-event .event-title { overflow-wrap: anywhere; }
+.week-allday { background: #f1f5ff; border-bottom: 1px solid #dadce0; padding: 6px 10px; }
+.week-allday strong { font-size: 12px; margin-right: 8px; }
+.week-allday .event { display: inline-block; width: auto; max-width: 100%; vertical-align: middle; margin-right: 6px; }
+/* Schedule: compact, chronological and continuous across months. */
+#schedule-view { border: 1px solid #dadce0; border-radius: 9px; max-height: 625px; overflow-y: auto; }
+.schedule-day { display: grid; grid-template-columns: 124px minmax(0,1fr); gap: 12px; padding: 12px 12px; border-bottom: 1px solid #dadce0; }
+.schedule-day:last-child { border-bottom: 0; }
+.schedule-date { display: flex; align-items: flex-start; gap: 8px; white-space: nowrap; }
+.schedule-number { font-size: 24px; line-height: 1.15; font-weight: 500; }
+.schedule-side { font-size: 11px; color: #5f6368; line-height: 1.5; padding-top: 3px; text-transform: uppercase; }
+.schedule-items { min-width: 0; }
+.schedule-event { width: 100%; display: grid; grid-template-columns: 12px 73px minmax(0,1fr); align-items: start; gap: 8px; border: 0; background: transparent; color: #202124; padding: 7px 5px; text-align: left; border-radius: 18px; line-height: 1.35; }
+.schedule-event:hover, .schedule-event:focus-visible { background: #f0f2f6; outline: 1px solid #d2e3fc; }
+.schedule-dot { background: #7986cb; border-radius: 50%; width: 10px; height: 10px; margin-top: 4px; }
+.schedule-time { font-size: 12px; color: #41454b; white-space: nowrap; }
+.schedule-title { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; white-space: normal; }
 .notice { padding: 14px; color: #5f6368; }
 .is-hidden { display: none !important; }
 dialog { width: min(95vw, 520px); border: 1px solid #dadce0; border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px #0003; }
@@ -49,21 +75,16 @@ dialog h2 { margin: 6px 0 10px; font-size: 19px; overflow-wrap: anywhere; }
 dialog p { white-space: pre-wrap; overflow-wrap: anywhere; }
 dialog a { overflow-wrap: anywhere; }
 .close { float: right; }
-
-@media (max-width: 680px) {
-  body { padding: 10px; }
-  h1 { font-size: 18px; }
-
-  .controls h2 {
-    font-size: 18px;
-    min-width: 0;
-    order: 1;
-    width: 100%;
-  }
-
+@media(max-width: 680px) {
+  body { padding: 9px; }
+  h1 { font-size: 17px; }
+  .controls h2 { font-size: 18px; min-width: 0; order: 1; width: 100%; }
   .view-switch { margin-left: auto; }
+  .schedule-day { grid-template-columns: 87px minmax(0,1fr); gap: 6px; padding: 9px 5px; }
+  .schedule-number { font-size: 20px; }
+  .schedule-event { grid-template-columns: 10px 60px minmax(0,1fr); gap: 5px; }
+  .schedule-title { font-size: 12px; }
 }
-
 </style>
 </head>
 <body>
@@ -75,13 +96,13 @@ dialog a { overflow-wrap: anywhere; }
   <h2 id="period-label"></h2>
   <div class="view-switch" role="group" aria-label="Calendar view">
     <button type="button" data-view="month" aria-pressed="true">Month</button>
-    <button type="button" data-view="day" aria-pressed="false">Day</button>
+    <button type="button" data-view="week" aria-pressed="false">Week</button>
     <button type="button" data-view="schedule" aria-pressed="false">Schedule</button>
   </div>
 </nav>
 <div id="month-grid" aria-label="Month calendar"></div>
 <div id="mobile-list" aria-label="Meetings this month"></div>
-<div id="day-view" class="is-hidden" aria-label="Day calendar"></div>
+<div id="week-view" class="is-hidden" aria-label="Week calendar"></div>
 <div id="schedule-view" class="is-hidden" aria-label="Schedule of meetings"></div>
 <dialog id="details" aria-label="Event details">
   <button class="close" id="close" type="button">Close</button>
@@ -92,7 +113,8 @@ dialog a { overflow-wrap: anywhere; }
 <script>
 (() => {
   'use strict';
-  // PUBLIC POC ONLY: this reads the synchronized dummy events.json, not a private TraceLink calendar.
+  // PUBLIC POC ONLY: this reads synchronized dummy events.json, not a private TraceLink calendar.
+  // Week event boxes may scroll internally for very long titles; click a meeting to read the complete details.
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { return 'UTC'; } })();
   const locale = navigator.language || 'en';
   const zoneParts = new Intl.DateTimeFormat('en-US', {timeZone:tz, year:'numeric', month:'2-digit', day:'2-digit'});
@@ -113,7 +135,7 @@ dialog a { overflow-wrap: anywhere; }
   const label = document.getElementById('period-label');
   const grid = document.getElementById('month-grid');
   const mobile = document.getElementById('mobile-list');
-  const dayView = document.getElementById('day-view');
+  const weekView = document.getElementById('week-view');
   const scheduleView = document.getElementById('schedule-view');
   const modal = document.getElementById('details');
   document.getElementById('close').onclick=() => modal.close();
@@ -121,6 +143,17 @@ dialog a { overflow-wrap: anywhere; }
   const monthFormat = dateFormat({month:'long',year:'numeric'});
   const dayFormat = dateFormat({weekday:'long',month:'long',day:'numeric',year:'numeric'});
   const shortDayFormat = dateFormat({weekday:'short',month:'short',day:'numeric'});
+  const weekdayFormat = dateFormat({weekday:'short'});
+  const monthShortFormat = dateFormat({month:'short'});
+  const localClockFormat = new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+  const hourHeight = 60; // pixels per hour in the weekly timetable
+  const startOfWeek = date => utcDay(date.getUTCFullYear(),date.getUTCMonth()+1,date.getUTCDate(),-date.getUTCDay());
+  const sameDate = (a,b) => dateUTC(a)===dateUTC(b);
+  const shortClock = date => new Intl.DateTimeFormat(locale,{timeZone:tz,hour:'numeric',minute:'2-digit'}).format(date);
+  function minuteInViewerZone(date) {
+    const p=Object.fromEntries(localClockFormat.formatToParts(date).filter(x=>x.type==='hour'||x.type==='minute').map(x=>[x.type,Number(x.value)]));
+    return p.hour*60+p.minute;
+  }
   const prettyTime = date => new Intl.DateTimeFormat(locale,{timeZone:tz,hour:'numeric',minute:'2-digit'}).format(date);
   const prettyDate = date => new Intl.DateTimeFormat(locale,{timeZone:tz,dateStyle:'full',timeStyle:'short'}).format(date);
   function text(tag,value,klass) { const node=document.createElement(tag); node.textContent=value||''; if(klass) node.className=klass; return node; }
@@ -199,9 +232,9 @@ dialog a { overflow-wrap: anywhere; }
       const outside=date.getUTCMonth()+1!==month;
       const box=text('div','','day'+(outside?' outside':'')+(k===key(todayParts.year,todayParts.month,todayParts.day)?' today':''));
       const jump=text('button',String(date.getUTCDate()),'day-number');
-      jump.type='button'; jump.title=`Open ${dayFormat.format(date)} in Day view`;
-      jump.setAttribute('aria-label',`Open ${dayFormat.format(date)} in Day view`);
-      jump.onclick=()=>{cursor=new Date(date);setView('day');};
+      jump.type='button'; jump.title=`Open the week of ${dayFormat.format(date)}`;
+      jump.setAttribute('aria-label',`Open the week of ${dayFormat.format(date)}`);
+      jump.onclick=()=>{cursor=new Date(date);setView('week');};
       box.append(jump);
       for(const e of map.get(k)||[]) box.append(eventButton(e,k));
       grid.append(box);
@@ -218,38 +251,114 @@ dialog a { overflow-wrap: anywhere; }
     }
     if(!count) mobile.append(text('p','No events scheduled in this month.','notice'));
   }
-  function renderDay(map) {
-    dayView.replaceChildren(agendaDay(cursor,map.get(dateUTC(cursor))||[],{empty:true}));
+  function renderWeek(map) {
+    weekView.replaceChildren();
+    const first=startOfWeek(cursor);
+    const dates=Array.from({length:7},(_,i)=>utcDay(first.getUTCFullYear(),first.getUTCMonth()+1,first.getUTCDate(),i));
+    // All-day events can span multiple days; display them above the hourly timetable.
+    const allDayEntries=[];
+    for(const date of dates) for(const e of map.get(dateUTC(date))||[]) if(e.start?.date) allDayEntries.push({date,e});
+    if(allDayEntries.length) {
+      const allDay=text('div','','week-allday');
+      allDay.append(text('strong','All day:'));
+      for(const item of allDayEntries) {
+        const b=eventButton(item.e,dateUTC(item.date));
+        b.title=shortDayFormat.format(item.date)+' — '+(item.e.summary||'Untitled');
+        allDay.append(b);
+      }
+      weekView.append(allDay);
+    }
+    const scroller=text('div','','week-scroll');
+    const board=text('div','','week-board');
+    board.append(text('div','','week-corner'));
+    const todayKey=key(todayParts.year,todayParts.month,todayParts.day);
+    for(const date of dates) {
+      const head=text('div','','week-header'+(dateUTC(date)===todayKey?' is-today':''));
+      head.append(text('span',weekdayFormat.format(date)));
+      head.append(text('span',String(date.getUTCDate()),'week-date'));
+      board.append(head);
+    }
+    const clock=text('div','','week-clock');
+    for(let h=1;h<24;h++) {
+      const t=text('span',new Intl.DateTimeFormat(locale,{hour:'numeric',hourCycle:'h12'}).format(new Date(Date.UTC(2026,0,1,h))),'hour-label');
+      t.style.top=`${h*hourHeight}px`;
+      clock.append(t);
+    }
+    board.append(clock);
+    for(const date of dates) {
+      const dayKey=dateUTC(date);
+      const track=text('div','','week-track'+(dayKey===todayKey?' is-today':''));
+      for(const e of map.get(dayKey)||[]) {
+        if(e.start?.date) continue;
+        const start=eventStart(e),end=eventEnd(e);
+        if(!start || Number.isNaN(start.getTime())) continue;
+        const a=localKey(start)===dayKey?minuteInViewerZone(start):0;
+        const b=end && localKey(end)===dayKey?minuteInViewerZone(end):1440;
+        const clippedStart=Math.max(0,Math.min(1439,a));
+        const duration=Math.max(20,Math.min(1440-clippedStart,b-clippedStart));
+        const btn=eventButton(e,dayKey,true);
+        btn.classList.add('week-event');
+        btn.style.top=`${clippedStart/60*hourHeight}px`;
+        btn.style.height=`${Math.max(44,duration/60*hourHeight-3)}px`;
+        btn.title=`${e.summary||'(Untitled event)'} — ${prettyDate(start)}`;
+        track.append(btn);
+      }
+      board.append(track);
+    }
+    scroller.append(board);
+    weekView.append(scroller);
+    scroller.scrollTop=7*hourHeight;
   }
   function renderSchedule(map) {
     scheduleView.replaceChildren();
-    const year=cursor.getUTCFullYear(),month=cursor.getUTCMonth()+1;
-    const days=new Date(Date.UTC(year,month,0)).getUTCDate();
+    // Google-style continuous agenda: show the next six months, not just selected month's meetings.
+    const from=cursor;
+    const until=utcDay(from.getUTCFullYear(),from.getUTCMonth()+6,from.getUTCDate());
     let count=0;
-    for(let d=1;d<=days;d++) {
-      const date=utcDay(year,month,d),items=map.get(dateUTC(date))||[];
+    for(let date=new Date(from),i=0;date<until&&i<215;i++,date.setUTCDate(date.getUTCDate()+1)) {
+      const dayKey=dateUTC(date);
+      const items=map.get(dayKey)||[];
       if(!items.length) continue;
       count+=items.length;
-      scheduleView.append(agendaDay(date,items));
+      const group=text('section','','schedule-day');
+      const dateCell=text('div','','schedule-date');
+      dateCell.append(text('span',String(date.getUTCDate()),'schedule-number'));
+      dateCell.append(text('span',monthShortFormat.format(date).toUpperCase()+', '+weekdayFormat.format(date).toUpperCase(),'schedule-side'));
+      group.append(dateCell);
+      const rows=text('div','','schedule-items');
+      for(const e of items) {
+        const b=document.createElement('button'); b.type='button'; b.className='schedule-event';
+        const start=eventStart(e);
+        const when=e.start?.date?'All day':start&&localKey(start)===dayKey?shortClock(start):'Continues';
+        b.append(text('span','','schedule-dot'));
+        b.append(text('span',when,'schedule-time'));
+        b.append(text('span',e.summary||'(Untitled event)','schedule-title'));
+        b.onclick=()=>showEvent(e);
+        rows.append(b);
+      }
+      group.append(rows);
+      scheduleView.append(group);
     }
-    if(!count) scheduleView.append(text('p','No events scheduled in this month.','notice'));
+    if(!count) scheduleView.append(text('p','No synced events found in this schedule range.','notice'));
   }
   function render() {
     const map=groupedEvents();
     grid.classList.toggle('is-hidden',view!=='month');
-    mobile.classList.toggle('is-hidden',view!=='month');
-    dayView.classList.toggle('is-hidden',view!=='day');
+    mobile.classList.add('is-hidden');
+    weekView.classList.toggle('is-hidden',view!=='week');
     scheduleView.classList.toggle('is-hidden',view!=='schedule');
-    label.textContent=view==='day' ? dayFormat.format(cursor)
-      : monthFormat.format(cursor)+(view==='schedule'?' · Schedule':'');
-    const unit=view==='day'?'day':'month';
+    if(view==='week') {
+      const a=startOfWeek(cursor),b=utcDay(a.getUTCFullYear(),a.getUTCMonth()+1,a.getUTCDate(),6);
+      label.textContent=monthShortFormat.format(a)+' '+a.getUTCDate()+' – '+monthShortFormat.format(b)+' '+b.getUTCDate()+', '+b.getUTCFullYear();
+    } else if(view==='schedule') {
+      label.textContent='Schedule from '+shortDayFormat.format(cursor)+', '+cursor.getUTCFullYear();
+    } else label.textContent=monthFormat.format(cursor);
+    const unit=view==='week'?'week':'month';
     document.getElementById('prev').setAttribute('aria-label',`Previous ${unit}`);
     document.getElementById('next').setAttribute('aria-label',`Next ${unit}`);
-    document.querySelectorAll('.view-switch button').forEach(btn=>{
-      btn.setAttribute('aria-pressed',String(btn.dataset.view===view));
-    });
+    document.querySelectorAll('.view-switch button').forEach(btn=>btn.setAttribute('aria-pressed',String(btn.dataset.view===view)));
     if(view==='month') renderMonth(map);
-    else if(view==='day') renderDay(map);
+    else if(view==='week') renderWeek(map);
     else renderSchedule(map);
   }
   function setView(next) { view=next; render(); }
@@ -257,7 +366,7 @@ dialog a { overflow-wrap: anywhere; }
     btn.onclick=()=>setView(btn.dataset.view);
   });
   function move(delta) {
-    if(view==='day') cursor=utcDay(cursor.getUTCFullYear(),cursor.getUTCMonth()+1,cursor.getUTCDate(),delta);
+    if(view==='week') cursor=utcDay(cursor.getUTCFullYear(),cursor.getUTCMonth()+1,cursor.getUTCDate(),7*delta);
     else {
       const y=cursor.getUTCFullYear(),m=cursor.getUTCMonth(),d=cursor.getUTCDate();
       const max=new Date(Date.UTC(y,m+delta+1,0)).getUTCDate();
