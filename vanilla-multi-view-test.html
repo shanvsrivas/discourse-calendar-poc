@@ -315,6 +315,9 @@ dialog a { overflow-wrap: anywhere; }
       weekView.append(allDay);
     }
     const scroller=text('div','','week-scroll');
+    // All seven columns share one vertical time axis. Find the earliest
+    // timed meeting in this week so navigation opens at a useful hour.
+    let earliestTimedMinute = Infinity;
     const board=text('div','','week-board');
     board.append(text('div','','week-corner'));
     const todayKey=key(todayParts.year,todayParts.month,todayParts.day);
@@ -341,6 +344,7 @@ dialog a { overflow-wrap: anywhere; }
         const a=localKey(start)===dayKey?minuteInViewerZone(start):0;
         const b=end && localKey(end)===dayKey?minuteInViewerZone(end):1440;
         const clippedStart=Math.max(0,Math.min(1439,a));
+        earliestTimedMinute=Math.min(earliestTimedMinute,clippedStart);
         const duration=Math.max(20,Math.min(1440-clippedStart,b-clippedStart));
         const btn=eventButton(e,dayKey,true);
         btn.classList.add('week-event');
@@ -353,7 +357,13 @@ dialog a { overflow-wrap: anywhere; }
     }
     scroller.append(board);
     weekView.append(scroller);
-    scroller.scrollTop=7*hourHeight;
+    // Automatically show scheduled meetings after Next/Previous/Today or
+    // changing to Week view. Leave 90 minutes of context above the first
+    // timed meeting. For weeks with no timed meetings, start around 8 AM.
+    const startingMinute=Number.isFinite(earliestTimedMinute)
+      ? Math.max(0,earliestTimedMinute-90)
+      : 8*60;
+    scroller.scrollTop=startingMinute/60*hourHeight;
   }
   function renderSchedule(map) {
     scheduleView.replaceChildren();
